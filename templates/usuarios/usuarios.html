@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lista de Usuarios</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  <style>
+    body {
+      background: linear-gradient(120deg, #f0fdfa, #d7f5f5, #c0ede6);
+      color: #1e2a38;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      min-height: 100vh;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 95%;
+      padding-top: 2rem;
+    }
+
+    .header {
+      background-color: #12344d;
+      color: #a2f4e5;
+      padding: 1.5rem 2rem;
+      border-radius: 1rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .header h2 {
+      font-size: 1.8rem;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-weight: 700;
+    }
+
+    .btn-outline-secondary {
+      border-color: #00bfa6;
+      color: #00bfa6;
+      transition: 0.3s;
+      font-weight: 600;
+    }
+
+    .btn-outline-secondary:hover {
+      background-color: #00bfa6;
+      color: #fff;
+    }
+
+    .btn-success {
+      background-color: #009688;
+      border: none;
+      font-weight: 600;
+      color: #fff;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .btn-success:hover {
+      background-color: #00796b;
+    }
+
+    .table-responsive {
+      background: #ffffff;
+      padding: 1.5rem;
+      border-radius: 1rem;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    table {
+      width: 100%;
+      border-spacing: 0 10px;
+    }
+
+    thead th {
+      background-color: #12344d;
+      color: #a2f4e5;
+      border: none;
+      text-align: center;
+      padding: 1rem;
+      font-size: 1rem;
+    }
+
+    tbody tr {
+      background-color: #f6ffff;
+      transition: background-color 0.3s;
+    }
+
+    tbody tr:hover {
+      background-color: #e2fbf8;
+    }
+
+    tbody td {
+      text-align: center;
+      padding: 1rem;
+      font-weight: 500;
+      color: #1e2a38;
+    }
+
+    .badge.bg-success {
+      background-color: #009688;
+      font-weight: 600;
+      font-size: 0.85rem;
+      padding: 0.45em 0.8em;
+      border-radius: 1rem;
+    }
+
+    .badge.bg-secondary {
+      background-color: #a0a6ac;
+      color: #fff;
+      font-weight: 600;
+      font-size: 0.85rem;
+      padding: 0.45em 0.8em;
+      border-radius: 1rem;
+    }
+
+    .btn-danger {
+      background-color: #e74c3c;
+      border: none;
+      border-radius: 0.5rem;
+      padding: 0.4rem 0.7rem;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    .btn-danger:hover {
+      background-color: #c0392b;
+    }
+
+    @media (max-width: 768px) {
+      .header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div class="d-flex align-items-center gap-3">
+      <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-outline-secondary" aria-label="Regresar al dashboard">
+        <i class="bi bi-arrow-left"></i> Regresar
+      </a>
+      <h2><i class="bi bi-people-fill"></i> Lista de Usuarios</h2>
+    </div>
+    <a href="{{ url_for('usuarios.registrar_usuario') }}" class="btn btn-success" aria-label="Nuevo usuario">
+      <i class="bi bi-plus-lg"></i> Nuevo Usuario
+    </a>
+  </div>
+
+  <div class="table-responsive">
+    <table class="table align-middle mb-0">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Username</th>
+          <th>Correo</th>
+          <th>Rol</th>
+          <th>Estado</th>
+          <th>Fecha de Creación</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for usuario in usuarios %}
+        <tr>
+          <td>{{ usuario.id }}</td>
+          <td>{{ usuario.username }}</td>
+          <td>{{ usuario.correo }}</td>
+          <td>{{ usuario.rol }}</td>
+          <td>
+            {% if usuario.estado == 1 %}
+              <span class="badge bg-success">Activo</span>
+            {% else %}
+              <span class="badge bg-secondary">Inactivo</span>
+            {% endif %}
+          </td>
+          <td>{{ usuario.fecha_creacion.strftime('%Y-%m-%d') if usuario.fecha_creacion else '' }}</td>
+          <td>
+            <a href="{{ url_for('usuarios.eliminar_usuario', id=usuario.id) }}" 
+               class="btn btn-danger" 
+               onclick="return confirm('¿Seguro que quieres eliminar este usuario?');"
+               title="Eliminar usuario" aria-label="Eliminar usuario {{ usuario.username }}">
+              <i class="bi bi-trash"></i>
+            </a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="7" class="text-center fst-italic">No hay usuarios registrados.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

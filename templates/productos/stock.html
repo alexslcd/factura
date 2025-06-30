@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Stock de Productos</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  <style>
+    body {
+      background: linear-gradient(135deg, #e6ecf1, #cbd5e0);
+      color: #343a40;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      min-height: 100vh;
+    }
+    .container {
+      padding-top: 40px;
+      padding-bottom: 40px;
+      max-width: 1200px;
+    }
+    .table thead {
+      background-color: #4a89dc;
+      color: #ffffff;
+    }
+    .card {
+      border-radius: 0.75rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    .card-header {
+      background-color: #375a7f;
+      color: #ffffff;
+      font-weight: 600;
+      text-align: center;
+    }
+    .badge-warning-light {
+      background-color: #fff3cd;
+      color: #856404;
+    }
+    .badge-success-light {
+      background-color: #d4edda;
+      color: #155724;
+    }
+    .badge-muted {
+      background-color: #dee2e6;
+      color: #6c757d;
+    }
+  </style>
+</head>
+<body>
+
+<!-- Modal de alerta en rojo -->
+<div class="modal fade" id="alertModal" tabindex="-1" aria-labelledby="alertModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content shadow">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title" id="alertModalLabel">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i> Alerta
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body text-center">
+        {% for category, message in get_flashed_messages(with_categories=true) %}
+          <div class="alert alert-danger mb-0" role="alert">
+            <strong>{{ message }}</strong>
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <h2 class="text-center mb-4">📦 Stock de Productos</h2>
+
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-outline-secondary">
+      <i class="bi bi-arrow-left"></i> Volver
+    </a>
+    <a href="{{ url_for('productos.stock') }}" class="btn btn-outline-primary">
+      <i class="bi bi-boxes"></i> Ver Stock Completo
+    </a>
+  </div>
+
+  <!-- Filtro de búsqueda -->
+  <div class="card shadow-sm mb-5">
+    <div class="card-body">
+      <form action="{{ url_for('productos.buscar_stock') }}" method="POST" class="row g-3" aria-label="Formulario de búsqueda de productos">
+        <div class="col-md-4">
+          <label for="categoria" class="form-label">Categoría</label>
+          <select name="categoria" id="categoria" class="form-select" required>
+            <option value="" disabled {% if not categoria_seleccionada %}selected{% endif %}>-- Seleccione categoría --</option>
+            {% for cat in categorias %}
+              <option value="{{ cat }}" {% if cat == categoria_seleccionada %}selected{% endif %}>{{ cat }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label for="nombre" class="form-label">Nombre del Producto</label>
+          <input type="text" id="nombre" name="nombre" class="form-control" placeholder="Buscar por nombre..." value="{{ nombre_busqueda }}" />
+        </div>
+        <div class="col-md-4">
+          <label for="numero_factura" class="form-label">Número de Factura</label>
+          <input type="text" id="numero_factura" name="numero_factura" class="form-control" placeholder="Ej. F001-1234" value="{{ numero_factura_busqueda }}" />
+        </div>
+        <div class="col-md-6">
+          <label for="fecha_inicio" class="form-label">Fecha Inicio</label>
+          <input type="date" id="fecha_inicio" name="fecha_inicio" class="form-control" value="{{ fecha_inicio_busqueda }}" />
+        </div>
+        <div class="col-md-6">
+          <label for="fecha_fin" class="form-label">Fecha Fin</label>
+          <input type="date" id="fecha_fin" name="fecha_fin" class="form-control" value="{{ fecha_fin_busqueda }}" />
+        </div>
+        <div class="col-12 text-end mt-2">
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="bi bi-search"></i> Buscar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Tabla de productos -->
+  <div class="card shadow-sm">
+    <div class="card-header">Lista de Productos</div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle mb-0 text-center">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Descripción</th>
+              <th>Precio (S/.)</th>
+              <th>Stock</th>
+              <th>Estado</th>
+              <th>Proveedor</th>
+              <th>Categoría</th>
+              <th>Tipo Doc.</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if productos %}
+              {% for producto in productos %}
+                <tr class="{% if producto.stock > 0 and producto.stock < 10 %}table-warning{% elif producto.stock == 0 %}table-secondary{% endif %}">
+                  <td>{{ producto.id }}</td>
+                  <td class="text-start">{{ producto.nombre }}</td>
+                  <td class="text-start">{{ producto.descripcion }}</td>
+                  <td class="text-end">S/. {{ '%.2f'|format(producto.precio) }}</td>
+                  <td>
+                    {% if producto.stock == 0 %}
+                      <span class="badge badge-muted">Sin stock</span>
+                    {% else %}
+                      {{ producto.stock }}
+                      {% if producto.stock < 10 %}
+                        <div class="text-danger small fw-bold">⚠ Bajo stock</div>
+                      {% endif %}
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if producto.stock == 0 %}
+                      <span class="badge bg-secondary">Inactivo</span>
+                    {% else %}
+                      <span class="badge bg-success">Activo</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-start">{{ producto.proveedor_nombre }}</td>
+                  <td>{{ producto.categoria }}</td>
+                  <td>{{ producto.documento_tipo }}</td>
+                  <td>
+                    <a href="{{ url_for('productos.editar_producto', id=producto.id) }}" class="btn btn-sm btn-outline-primary" aria-label="Editar {{ producto.nombre }}">
+                      <i class="bi bi-pencil-square"></i> Editar
+                    </a>
+                  </td>
+                </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="10" class="text-center text-muted">No se encontraron productos.</td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    {% if get_flashed_messages() %}
+      const modal = new bootstrap.Modal(document.getElementById('alertModal'));
+      modal.show();
+    {% endif %}
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Registrar Cliente</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet" />
+  <style>
+    body { background: linear-gradient(135deg,#e3f2fd,#f1f8e9); font-family:'Segoe UI',sans-serif; }
+    .form-wrapper { min-height:100vh; display:flex; align-items:center; justify-content:center; padding:2rem 1rem; }
+    .factura-form { background:#fff; padding:2.5rem; border-radius:1.5rem; box-shadow:0 10px 30px rgba(0,0,0,0.1); max-width:900px; width:100%; }
+    h2 { color:#0d6efd; font-weight:700; margin-bottom:2rem; text-align:center; }
+    .form-label { font-weight:600; color:#212529; }
+    .form-control:focus, .form-select:focus { border-color:#0d6efd; box-shadow:0 0 0 .2rem rgba(13,110,253,.25); }
+    .btn-primary { background:#0d6efd; border:none; font-weight:600; padding:.6rem 1.5rem; }
+    .btn-primary:hover { background:#0b5ed7; }
+    .btn-secondary { background:#adb5bd; border:none; font-weight:600; padding:.6rem 1.5rem; }
+    .btn-secondary:hover { background:#9da3aa; }
+    .btn-group { display:flex; flex-direction:column; gap:1rem; margin-top:2rem; }
+    @media(min-width:768px){ .btn-group{ flex-direction:row; justify-content:space-between; } }
+  </style>
+</head>
+<body>
+
+<div class="form-wrapper">
+  <div class="factura-form">
+    <h2>Registrar Cliente</h2>
+
+    <form action="{{ url_for('clientes.crear_cliente') }}" method="POST" id="clienteForm" novalidate>
+      <div class="row g-3">
+
+        <div class="mb-3">
+          <label for="documento_tipo" class="form-label">Tipo de documento</label>
+          <select class="form-select" name="documento_tipo" id="documento_tipo" required autofocus>
+            <option value="">Seleccione tipo</option>
+            <option value="DNI" {{ 'selected' if tipo=='DNI' else '' }}>DNI</option>
+            <option value="RUC" {{ 'selected' if tipo=='RUC' else '' }}>RUC</option>
+          </select>
+        </div>
+
+        <div class="col-md-6">
+          <label for="documento_numero" class="form-label">Número de Documento</label>
+          <input type="text" class="form-control" id="documento_numero" name="documento_numero"
+                 placeholder="Ingrese número" inputmode="numeric" required
+                 value="{{ numero or '' }}" />
+        </div>
+
+        <div class="col-md-6">
+          <label for="nombre" class="form-label">Nombre</label>
+          <input type="text" class="form-control" id="nombre" name="nombre"
+                 maxlength="100" required placeholder="Ingrese nombre completo"
+                 value="{{ nombre or '' }}" />
+        </div>
+
+        <div class="col-md-6">
+          <label for="direccion" class="form-label">Dirección</label>
+          <input type="text" class="form-control" id="direccion" name="direccion"
+                 maxlength="255" required placeholder="Dirección del cliente"
+                 value="{{ direccion or '' }}" />
+        </div>
+
+        <div class="col-md-6">
+          <label for="telefono" class="form-label">Teléfono</label>
+          <input type="tel" class="form-control" id="telefono" name="telefono"
+                 maxlength="20" required placeholder="Ej: 999123456"
+                 value="{{ telefono or '' }}" />
+        </div>
+
+        <div class="col-md-6">
+          <label for="correo" class="form-label">Correo Electrónico</label>
+          <input type="email" class="form-control" id="correo" name="correo"
+                 maxlength="100" required placeholder="cliente@correo.com"
+                 value="{{ correo or '' }}" />
+        </div>
+
+        <div class="col-md-6">
+          <label for="estado" class="form-label">Estado</label>
+          <select class="form-select" name="estado" id="estado" required>
+            <option value="1" {{ 'selected' if estado=='1' else '' }}>Activo</option>
+            <option value="0" {{ 'selected' if estado=='0' else '' }}>Inactivo</option>
+          </select>
+        </div>
+
+      </div>
+
+      <div class="btn-group">
+        <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-secondary">← Volver</a>
+        <button type="submit" class="btn btn-primary">Registrar Cliente</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal de mensajes -->
+<div class="modal fade" id="flashModal" tabindex="-1" aria-labelledby="flashModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" id="flashModalContent">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title" id="flashModalLabel">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>Mensaje
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="flashModalBody">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ 'danger' if category == 'danger' else category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cerrar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const showModal = (title, message, type='primary') => {
+    const modal = new bootstrap.Modal(document.getElementById('flashModal'));
+    document.getElementById('flashModalLabel').innerHTML = `<i class="bi bi-exclamation-triangle-fill me-2"></i>${title}`;
+    document.getElementById('flashModalBody').innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+    document.querySelector('#flashModal .modal-header').className = `modal-header bg-${type} text-white`;
+    modal.show();
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const body = document.getElementById('flashModalBody');
+    if (body && body.textContent.trim() !== '') {
+      new bootstrap.Modal(document.getElementById('flashModal')).show();
+    }
+  });
+
+  const tipoDoc = document.getElementById('documento_tipo');
+  const numeroDoc = document.getElementById('documento_numero');
+
+  tipoDoc.addEventListener('change', function(){
+    numeroDoc.value = '';
+    if(this.value==='DNI'){
+      numeroDoc.maxLength=8; numeroDoc.pattern='\\d{8}';
+      numeroDoc.placeholder='Ingrese 8 dígitos (DNI)';
+    } else if(this.value==='RUC'){
+      numeroDoc.maxLength=11; numeroDoc.pattern='\\d{11}';
+      numeroDoc.placeholder='Ingrese 11 dígitos (RUC)';
+    } else {
+      numeroDoc.removeAttribute('pattern');
+      numeroDoc.placeholder='Ingrese número';
+    }
+  });
+
+  document.getElementById('clienteForm').addEventListener('submit', function(e){
+    const t = tipoDoc.value.trim(),
+          num = numeroDoc.value.trim(),
+          nom = document.getElementById('nombre').value.trim(),
+          dir = document.getElementById('direccion').value.trim(),
+          tel = document.getElementById('telefono').value.trim(),
+          cor = document.getElementById('correo').value.trim();
+
+    if(!t||!num||!nom||!dir||!tel||!cor){
+      e.preventDefault();
+      showModal('Campos Incompletos','Por favor complete todos los campos obligatorios.','warning');
+      return;
+    }
+    if(t==='DNI' && !/^\d{8}$/.test(num)){
+      e.preventDefault();
+      showModal('Número Inválido','El número de DNI debe tener 8 dígitos.','danger');
+      return;
+    }
+    if(t==='RUC' && !/^\d{11}$/.test(num)){
+      e.preventDefault();
+      showModal('Número Inválido','El número de RUC debe tener 11 dígitos.','danger');
+    }
+  });
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

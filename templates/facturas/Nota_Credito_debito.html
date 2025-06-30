@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Registrar Nota de Crédito/Débito</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #f0f4f8; color: #334155; }
+    h3 { color: #2563eb; font-weight: 600; }
+    .card { border: none; border-radius: 1rem; box-shadow: 0 6px 16px rgba(0,0,0,0.06); background: #fff; }
+    .form-label { font-weight: 500; }
+    .form-control, .form-select { border-radius: 0.5rem; border: 1px solid #cbd5e1; }
+    .btn-primary { background: #2563eb; border: none; border-radius: 0.5rem; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary { border-radius: 0.5rem; }
+    .modal-content { border-radius: 1rem; }
+    .modal-header, .modal-footer { border: none; }
+    .table thead { background: #e0f2fe; }
+  </style>
+</head>
+<body>
+  <div class="container py-5">
+    <div class="card p-4">
+      <h3 class="mb-4">
+        <i class="bi bi-receipt-cutoff me-2"></i>Registrar Nota de Crédito / Débito
+      </h3>
+
+      <form id="notaForm">
+        <label for="criterio_busqueda" class="form-label">Número de Factura o RUC/DNI</label>
+        <div class="input-group mb-3">
+          <input type="text" class="form-control" id="criterio_busqueda" placeholder="Ingrese número de factura o RUC/DNI" required>
+          <button type="button" class="btn btn-primary" id="btnBuscar">
+            <i class="bi bi-search"></i> Buscar
+          </button>
+        </div>
+
+        <div class="mb-3">
+          <label for="factura_select" class="form-label">Seleccione una Factura</label>
+          <select class="form-select" id="factura_select" name="factura_id" required>
+            <option value="">Seleccione una factura...</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label for="tipo_nota" class="form-label">Tipo de Nota</label>
+          <select class="form-select" id="tipo_nota" name="tipo_nota" required>
+            <option value="">Seleccione tipo...</option>
+            <option value="credito">Nota de Crédito</option>
+            <option value="debito">Nota de Débito</option>
+          </select>
+        </div>
+
+        <div class="mb-3">
+          <label for="motivo" class="form-label">Motivo</label>
+          <textarea class="form-control" id="motivo" name="motivo" rows="2" required></textarea>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Detalle de Productos</label>
+          <div class="table-responsive">
+            <table class="table table-bordered rounded">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Cantidad</th>
+                  <th>Precio Unitario</th>
+                  <th>Subtotal</th>
+                </tr>
+              </thead>
+              <tbody id="productosNota">
+                <tr><td colspan="4" class="text-muted text-center">Seleccione una factura...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="mb-4">
+          <div class="mb-2">
+            <label class="form-label">Subtotal (sin IGV)</label>
+            <input type="text" readonly class="form-control" id="subtotal" value="0.00">
+          </div>
+          <div class="mb-2">
+            <label class="form-label">IGV (18%)</label>
+            <input type="text" readonly class="form-control" id="igv" value="0.00">
+          </div>
+          <div>
+            <label class="form-label">Total (con IGV)</label>
+            <input type="text" readonly class="form-control" id="monto" name="monto" value="0.00">
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-between">
+          <button type="submit" class="btn btn-primary px-4">
+            <i class="bi bi-check-circle me-1"></i> Registrar Nota
+          </button>
+          <a href="/dashboard" class="btn btn-secondary px-4">
+            <i class="bi bi-arrow-left-circle me-1"></i> Cancelar
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal fade" id="successModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content shadow text-center">
+        <div class="modal-header border-0">
+          <h5 class="modal-title text-success">
+            <i class="bi bi-check-circle-fill me-2"></i> Nota registrada
+          </h5>
+        </div>
+        <div class="modal-body">
+          <p>La nota se registró correctamente.</p>
+        </div>
+        <div class="modal-footer border-0">
+          <button type="button" class="btn btn-primary" id="btnIrDashboard">Ir al Dashboard</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const criterioInput = document.getElementById('criterio_busqueda');
+    const buscarBtn = document.getElementById('btnBuscar');
+    const facturaSelect = document.getElementById('factura_select');
+    const productosTbody = document.getElementById('productosNota');
+    const tipoNota = document.getElementById('tipo_nota');
+
+    buscarBtn.addEventListener('click', () => {
+      const criterio = criterioInput.value.trim();
+      if (!criterio) {
+        alert("Ingrese un criterio válido.");
+        return;
+      }
+      facturaSelect.innerHTML = '<option value="">Seleccione una factura...</option>';
+      productosTbody.innerHTML = '<tr><td colspan="4" class="text-muted text-center">Seleccione una factura...</td></tr>';
+      document.getElementById('subtotal').value = '0.00';
+      document.getElementById('igv').value = '0.00';
+      document.getElementById('monto').value = '0.00';
+
+      fetch(`/facturas/api/buscar_factura?criterio=${encodeURIComponent(criterio)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            const facturas = data.factura ? [data.factura] : data.facturas;
+            facturas.forEach(f => {
+              const option = new Option(`${f.numero_factura} - ${f.cliente} - S/ ${f.total}`, f.id);
+              facturaSelect.appendChild(option);
+            });
+          } else {
+            alert("No se encontraron facturas.");
+          }
+        });
+    });
+
+    facturaSelect.addEventListener('change', () => actualizarProductos());
+    tipoNota.addEventListener('change', () => actualizarProductos());
+
+    function actualizarProductos() {
+      const facturaId = facturaSelect.value;
+      if (!facturaId) return;
+      productosTbody.innerHTML = '';
+      fetch(`/facturas/api/detalle_factura?factura_id=${facturaId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (!data.productos || data.productos.length === 0) {
+            productosTbody.innerHTML = '<tr><td colspan="4" class="text-muted text-center">No hay productos.</td></tr>';
+            return;
+          }
+          let total = 0;
+          data.productos.forEach(prod => {
+            let precio = parseFloat(prod.precio_unitario);
+            if (tipoNota.value === 'debito') {
+              precio = parseFloat(prod.nuevo_precio || precio);
+            }
+            const subtotal = prod.cantidad * precio;
+            total += subtotal;
+            productosTbody.innerHTML += `
+              <tr>
+                <td>${prod.nombre}</td>
+                <td>${prod.cantidad}</td>
+                <td>S/ ${precio.toFixed(2)}</td>
+                <td>S/ ${subtotal.toFixed(2)}</td>
+              </tr>`;
+          });
+          const subtotalCalc = total / 1.18;
+          const igv = total - subtotalCalc;
+          document.getElementById('subtotal').value = subtotalCalc.toFixed(2);
+          document.getElementById('igv').value = igv.toFixed(2);
+          document.getElementById('monto').value = total.toFixed(2);
+        });
+    }
+
+    document.getElementById('notaForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const formData = new FormData(this);
+      fetch('/facturas/registrar-nota', {
+        method: 'POST',
+        body: formData
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          const modal = new bootstrap.Modal(document.getElementById('successModal'));
+          modal.show();
+          window.open(`/facturas/generar-pdf-nota/${data.nota_id}`, '_blank'); // ✅ URL corregido
+          document.getElementById('btnIrDashboard').addEventListener('click', () => {
+            window.location.href = '/dashboard';
+          });
+        } else {
+          alert(data.error || "Error al registrar la nota");
+        }
+      });
+    });
+  </script>
+</body>
+</html>

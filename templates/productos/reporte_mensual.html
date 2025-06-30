@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reporte Mensual de Productos</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f0f8ff;
+    }
+    .container {
+      margin-top: 1rem;
+    }
+    .charts-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    .chart-container {
+      flex: 1 1 0;
+      max-width: 32%;
+      background: #e9f5ff;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgb(0 123 255 / 0.15);
+      min-width: 280px;
+    }
+    .table-container {
+      margin-top: 0.5rem;
+    }
+    table {
+      font-size: 0.85rem;
+    }
+    .accordion-button:focus {
+      box-shadow: none;
+    }
+    .btn-back {
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <div class="text-center mb-4">
+      <h1 class="fw-bold">
+        <i class="bi bi-bar-chart-line me-2"></i>
+        Reporte Mensual de Productos
+      </h1>
+    </div>
+
+    <a href="{{ url_for('productos.productos_vendidos') }}" class="btn btn-primary btn-back">
+      ← Volver
+    </a>
+
+    <div class="charts-row">
+      <div class="chart-container">
+        <canvas id="productosChart" height="150"></canvas>
+      </div>
+      <div class="chart-container">
+        <canvas id="ingresosChart" height="150"></canvas>
+      </div>
+      <div class="chart-container">
+        <canvas id="topProductosChart" height="150"></canvas>
+      </div>
+    </div>
+
+    <div class="accordion" id="reportesAccordion">
+      {% for mes, datos in reportes.items() %}
+      <div class="accordion-item">
+        <h2 class="accordion-header" id="heading{{ loop.index }}">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ loop.index }}" aria-expanded="false" aria-controls="collapse{{ loop.index }}">
+            {{ mes.capitalize() }} — Total: S/ {{ datos.total_mensual | round(2) }} — Productos vendidos: {{ datos.productos_total }}
+          </button>
+        </h2>
+        <div id="collapse{{ loop.index }}" class="accordion-collapse collapse" aria-labelledby="heading{{ loop.index }}" data-bs-parent="#reportesAccordion">
+          <div class="accordion-body table-container">
+            {% for comp in datos.comprobantes %}
+            <div class="mb-3">
+              <h5>{{ comp.tipo | capitalize }} Nº {{ comp.numero }} - Fecha: {{ comp.fecha }}</h5>
+              <table class="table table-striped table-bordered table-sm">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th class="text-end">Cantidad</th>
+                    <th class="text-end">Subtotal (S/)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for prod in comp.productos %}
+                  <tr>
+                    <td>{{ prod.nombre.capitalize() }}</td>
+                    <td class="text-end">{{ prod.cantidad }}</td>
+                    <td class="text-end">{{ prod.subtotal | round(2) }}</td>
+                  </tr>
+                  {% endfor %}
+                  <tr class="fw-bold">
+                    <td>Total</td>
+                    <td class="text-end">{{ comp.cantidad_total }}</td>
+                    <td class="text-end">{{ comp.total | round(2) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <script>
+    const labels = {{ labels | tojson }};
+    const productosData = {{ productos_por_mes | tojson }};
+    const ingresosData = {{ ingresos_por_mes | tojson }};
+    const topNombres = {{ top_nombres | tojson }};
+    const topCantidades = {{ top_cantidades | tojson }};
+
+    // Productos vendidos mensual (barras)
+    const productosCtx = document.getElementById('productosChart').getContext('2d');
+    const productosChart = new Chart(productosCtx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Productos vendidos',
+          data: productosData,
+          backgroundColor: 'rgba(54, 162, 235, 0.7)',
+          borderColor: 'rgba(54, 162, 235, 1)',
+          borderWidth: 1,
+          borderRadius: 5
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: { mode: 'index', intersect: false }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { stepSize: 1 }
+          }
+        }
+      }
+    });
+
+    // Ingresos mensual (línea)
+    const ingresosCtx = document.getElementById('ingresosChart').getContext('2d');
+    const ingresosChart = new Chart(ingresosCtx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Ingresos (S/)',
+          data: ingresosData,
+          fill: true,
+          backgroundColor: 'rgba(40, 167, 69, 0.3)',
+          borderColor: 'rgba(40, 167, 69, 1)',
+          borderWidth: 2,
+          tension: 0.3,
+          pointRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: 'top' }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { callback: value => 'S/ ' + value.toFixed(2) }
+          }
+        }
+      }
+    });
+
+    // Top 5 productos mes actual (barras horizontal)
+    const topCtx = document.getElementById('topProductosChart').getContext('2d');
+    const topProductosChart = new Chart(topCtx, {
+      type: 'bar',
+      data: {
+        labels: topNombres,
+        datasets: [{
+          label: 'Top 5 productos vendidos',
+          data: topCantidades,
+          backgroundColor: [
+            'rgba(255, 99, 132, 0.7)',
+            'rgba(255, 159, 64, 0.7)',
+            'rgba(255, 205, 86, 0.7)',
+            'rgba(75, 192, 192, 0.7)',
+            'rgba(54, 162, 235, 0.7)'
+          ],
+          borderColor: [
+            'rgba(255, 99, 132, 1)',
+            'rgba(255, 159, 64, 1)',
+            'rgba(255, 205, 86, 1)',
+            'rgba(75, 192, 192, 1)',
+            'rgba(54, 162, 235, 1)'
+          ],
+          borderWidth: 1,
+          borderRadius: 5
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: { mode: 'nearest', intersect: true }
+        },
+        scales: {
+          x: {
+            beginAtZero: true,
+            ticks: { stepSize: 1 }
+          }
+        }
+      }
+    });
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
