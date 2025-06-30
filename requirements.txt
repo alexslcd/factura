@@ -27,3 +27,4 @@ six==1.17.0
 tzdata==2025.2
 Werkzeug==3.0.4
 gunicorn==21.2.0
+requests==2.31.0
