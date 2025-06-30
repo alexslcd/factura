@@ -104,13 +104,14 @@ def api_detalle_factura():
     conn = get_db_connection()
     cursor = conn.cursor()
 
+    # Obtenemos el detalle de los productos de la factura
     cursor.execute("""
         SELECT 
             df.producto_id AS id,
             p.nombre,
             df.cantidad,
-            df.precio_unitario AS precio_original,
-            p.precio AS precio_actual
+            df.precio_unitario,
+            p.precio AS nuevo_precio
         FROM detalle_factura df
         JOIN productos p ON df.producto_id = p.id
         WHERE df.factura_id = %s
@@ -122,6 +123,7 @@ def api_detalle_factura():
     conn.close()
 
     return jsonify({"productos": productos})
+
 
 
 @facturas_bp.route('/api/facturas_por_cliente')
@@ -490,9 +492,6 @@ def _generar_pdf_comprobante(numero, tipo_doc):
 
 
 
-
-
-
 @facturas_bp.route('/borrar/<int:id>', methods=['POST'])
 def borrar_facturas(id):
     conn = get_db_connection()
@@ -546,55 +545,111 @@ def nueva_nota():
 # --- 2) Registrar nota ---
 @facturas_bp.route('/registrar-nota', methods=['POST'])
 def registrar_nota():
+
     factura_id = request.form.get('factura_id')
     tipo_nota = request.form.get('tipo_nota')  # 'credito' o 'debito'
     motivo = request.form.get('motivo')
-    monto = request.form.get('monto')
-    estado = 'ACTIVO'
-    fecha_emision = datetime.now()
 
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Contar notas previas del mismo tipo
+    # Obtener datos de factura y cliente
     cursor.execute("""
-        SELECT COUNT(*) AS total 
-        FROM notas_credito_debito 
-        WHERE tipo_nota = %s
-    """, (tipo_nota,))
-    result = cursor.fetchone()
-    count = result['total'] + 1  # Acceso por clave
+        SELECT f.id, f.total, f.cliente_documento_numero, c.nombre 
+        FROM facturas f 
+        JOIN clientes c ON f.cliente_documento_numero = c.documento_numero
+        WHERE f.id = %s
+    """, (factura_id,))
+    factura = cursor.fetchone()
 
-    # Generar código
-    prefijo = 'ND' if tipo_nota == 'debito' else 'NC'
-    codigo = f"{prefijo}-{count:04d}"
+    if not factura:
+        cursor.close()
+        conn.close()
+        return jsonify({"success": False, "error": "Factura no encontrada"})
 
-    # Si es nota de débito, actualizar precios de productos
-    if tipo_nota == 'debito':
-        productos_json = request.form.get('productos_modificados')
-        if productos_json:
-            productos_modificados = json.loads(productos_json)
-            for prod in productos_modificados:
-                cursor.execute("""
-                    UPDATE detalle_factura
-                    SET precio_unitario = %s
-                    WHERE factura_id = %s AND producto_id = %s
-                """, (prod['nuevo_precio_unitario'], factura_id, prod['producto_id']))
+    # Generar código correlativo
+    cursor.execute("SELECT COUNT(*) AS total FROM notas_credito_debito")
+    count = cursor.fetchone()['total'] + 1
+    codigo = f"NCD-{count:06d}"
 
-    # Insertar la nota
+    monto = Decimal('0.00')
+    detalle_productos = []
+
+    if tipo_nota == 'credito':
+        monto = Decimal(factura['total'])
+        cursor.execute("UPDATE facturas SET estado = 'anulada' WHERE id = %s", (factura_id,))
+    
+    elif tipo_nota == 'debito':
+        cursor.execute("""
+            SELECT df.producto_id, df.cantidad, 
+                   CAST(p.precio AS DECIMAL(10,2)) AS nuevo_precio, 
+                   CAST(df.precio_unitario AS DECIMAL(10,2)) AS antiguo_precio
+            FROM detalle_factura df
+            JOIN productos p ON df.producto_id = p.id
+            WHERE df.factura_id = %s
+        """, (factura_id,))
+        productos = cursor.fetchall()
+
+        if not productos:
+            cursor.close()
+            conn.close()
+            return jsonify({"success": False, "error": "No se encontraron productos asociados a la factura."})
+
+        for prod in productos:
+            nuevo_precio = Decimal(prod['nuevo_precio'])
+            antiguo_precio = Decimal(prod['antiguo_precio'])
+            cantidad = Decimal(prod['cantidad'])
+
+            if nuevo_precio != antiguo_precio:
+                diferencia = (nuevo_precio - antiguo_precio) * cantidad
+                detalle_productos.append({
+                    'producto_id': prod['producto_id'],
+                    'cantidad': float(cantidad),
+                    'precio_unitario': float(nuevo_precio),
+                    'subtotal': float(diferencia)
+                })
+                monto += diferencia
+
+        if not detalle_productos:
+            cursor.close()
+            conn.close()
+            return jsonify({
+                "success": False,
+                "error": "No hay diferencias de precio que generen una nota de débito. Verifica los productos."
+            })
+
+    # Insertar nota con estado 'activo'
     cursor.execute("""
-        INSERT INTO notas_credito_debito 
-        (factura_id, tipo_nota, motivo, monto, codigo, fecha_emision, estado)
+        INSERT INTO notas_credito_debito (factura_id, tipo_nota, motivo, monto, codigo, fecha_emision, estado)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
-    """, (factura_id, tipo_nota, motivo, monto, codigo, fecha_emision, estado))
-
+    """, (
+        factura_id, tipo_nota, motivo, float(monto), codigo, datetime.now(), 'activo'
+    ))
     nota_id = cursor.lastrowid
+
+    # Insertar detalle de nota
+    for item in detalle_productos:
+        if not item.get('producto_id'):
+            cursor.close()
+            conn.close()
+            return jsonify({
+                "success": False,
+                "error": "Producto inválido detectado en el detalle."
+            })
+
+        cursor.execute("""
+            INSERT INTO detalle_nota (nota_id, producto_id, cantidad, precio_unitario, subtotal)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (
+            nota_id, item['producto_id'], item['cantidad'], item['precio_unitario'], item['subtotal']
+        ))
 
     conn.commit()
     cursor.close()
     conn.close()
 
-    return jsonify({"success": True, "nota_id": nota_id, "codigo": codigo})
+    return jsonify({"success": True, "nota_id": nota_id})
+
 
 # --- 3) Generar PDF ---
 @facturas_bp.route('/generar-pdf-nota/<int:nota_id>')
@@ -746,39 +801,45 @@ def generar_pdf_nota(nota_id):
 @facturas_bp.route('/notas')
 def listar_notas():
     conn = get_db_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor()  # o DictCursor si usas PyMySQL
 
-    # 1. Obtener cabecera de notas
     cursor.execute("""
-        SELECT n.id, n.tipo_nota, n.motivo, n.monto, n.fecha_emision,
-               f.numero_factura, c.nombre AS cliente_nombre
+        SELECT 
+            n.id,
+            n.tipo_nota,
+            n.motivo,
+            n.monto,
+            n.fecha_emision,
+            f.numero_factura,
+            c.nombre AS cliente_nombre,
+            c.documento_tipo,
+            c.documento_numero
         FROM notas_credito_debito n
         JOIN facturas f ON n.factura_id = f.id
         JOIN clientes c ON f.cliente_documento_numero = c.documento_numero
         ORDER BY n.fecha_emision DESC
     """)
-    notas = cursor.fetchall()
 
-    # 2. Para cada cabecera, obtener su detalle de productos
-    notas_con_detalle = []
-    for nota in notas:
-        cursor.execute("""
-            SELECT dn.producto_id, p.nombre AS producto_nombre,
-                   dn.cantidad, dn.precio_unitario, dn.subtotal
-            FROM detalle_nota dn
-            JOIN productos p ON dn.producto_id = p.id
-            WHERE dn.nota_id = %s
-        """, (nota['id'],))
-        detalle = cursor.fetchall()
-        notas_con_detalle.append({
-            'nota': nota,
-            'detalle': detalle
-        })
-
-    cursor.close()
+    rows = cursor.fetchall()
     conn.close()
 
-    return render_template('facturas/listado_notas.html', notas=notas_con_detalle)
+    notas = []
+    for row in rows:
+        notas.append({
+            "nota": {
+                "id": row["id"],
+                "tipo_nota": row["tipo_nota"],
+                "motivo": row["motivo"],
+                "monto": row["monto"],
+                "fecha_emision": row["fecha_emision"],
+                "numero_factura": row["numero_factura"],
+                "cliente_nombre": row["cliente_nombre"],
+                "tipo_documento": row["documento_tipo"],  # Usamos el nombre correcto
+                "numero_documento": row["documento_numero"]
+            }
+        })
+
+    return render_template("facturas/listado_notas.html", notas=notas)
 
 
 @facturas_bp.route('/imprimir-nota/<int:nota_id>')
