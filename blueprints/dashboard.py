@@ -15,18 +15,15 @@ def dashboard():
     fecha_fin = request.args.get('fecha_fin')
     cliente_id = request.args.get('cliente')
 
-    # Construcción dinámica de condiciones
     condiciones = []
     params = []
 
     if fecha_inicio:
         condiciones.append("f.fecha_emision >= %s")
         params.append(fecha_inicio)
-
     if fecha_fin:
         condiciones.append("f.fecha_emision <= %s")
         params.append(fecha_fin)
-
     if cliente_id:
         condiciones.append("f.cliente_documento_numero = %s")
         params.append(cliente_id)
@@ -69,7 +66,7 @@ def dashboard():
         JOIN productos p ON df.producto_id = p.id
         JOIN facturas f ON df.factura_id = f.id
         {where_clause}
-        GROUP BY p.id
+        GROUP BY p.nombre  -- ✅ Cambiado p.id a p.nombre
         ORDER BY total_vendidos DESC
         LIMIT 1
     """, params)
@@ -82,7 +79,7 @@ def dashboard():
         JOIN productos p ON df.producto_id = p.id
         JOIN facturas f ON df.factura_id = f.id
         {where_clause}
-        GROUP BY p.id
+        GROUP BY p.nombre  -- ✅ Cambiado p.id a p.nombre
         ORDER BY total_vendidos ASC
         LIMIT 1
     """, params)
@@ -96,7 +93,7 @@ def dashboard():
         JOIN detalle_factura df ON f.id = df.factura_id
         JOIN productos p ON df.producto_id = p.id
         {where_clause}
-        GROUP BY c.documento_numero
+        GROUP BY c.documento_numero, c.nombre  -- ✅ Agregado c.nombre por FULL_GROUP_BY
         ORDER BY total_compras DESC
         LIMIT 1
     """, params)
@@ -110,7 +107,7 @@ def dashboard():
         JOIN productos p ON df.producto_id = p.id
         {where_clause}
         GROUP BY DATE(f.fecha_emision)
-        ORDER BY f.fecha_emision ASC
+        ORDER BY fecha_emision ASC  -- ✅ Cambiado f.fecha_emision por alias fecha_emision
     """, params)
     ventas_por_dia = cursor.fetchall()
 
@@ -121,7 +118,7 @@ def dashboard():
         JOIN productos p ON df.producto_id = p.id
         JOIN facturas f ON df.factura_id = f.id
         {where_clause}
-        GROUP BY DATE(f.fecha_emision), p.nombre
+        GROUP BY fecha_emision, p.nombre  -- ✅ fecha_emision en GROUP BY como alias
         ORDER BY fecha_emision ASC, cantidad DESC
     """, params)
     productos_por_dia = cursor.fetchall()
