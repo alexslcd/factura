@@ -15,32 +15,18 @@
     <form method="get" class="row g-3 mb-4">
       <div class="col-md-3">
         <label for="fecha_inicio" class="form-label">Fecha Inicio</label>
-        <input type="date" id="fecha_inicio" name="fecha_inicio" class="form-control" value="{{ filtros.fecha_inicio }}">
+        <input type="date" id="fecha_inicio" name="fecha_inicio" class="form-control" value="{{ request.args.get('fecha_inicio', '') }}">
       </div>
       <div class="col-md-3">
         <label for="fecha_fin" class="form-label">Fecha Fin</label>
-        <input type="date" id="fecha_fin" name="fecha_fin" class="form-control" value="{{ filtros.fecha_fin }}">
+        <input type="date" id="fecha_fin" name="fecha_fin" class="form-control" value="{{ request.args.get('fecha_fin', '') }}">
       </div>
       <div class="col-md-3">
-        <label for="cliente" class="form-label">Cliente</label>
-        <select id="cliente" name="cliente" class="form-select">
-          <option value="">Todos</option>
-          {% for cli in clientes %}
-          <option value="{{ cli.documento_numero }}" {% if cli.documento_numero == filtros.cliente %}selected{% endif %}>{{ cli.nombre }}</option>
-          {% endfor %}
-        </select>
+        <label for="cliente" class="form-label">Cliente (ID / Documento)</label>
+        <input type="text" id="cliente" name="cliente" class="form-control" value="{{ request.args.get('cliente', '') }}">
       </div>
-      <div class="col-md-3">
-        <label for="categoria" class="form-label">Categoría</label>
-        <select id="categoria" name="categoria" class="form-select">
-          <option value="">Todas</option>
-          {% for cat in categorias %}
-          <option value="{{ cat }}" {% if cat == filtros.categoria %}selected{% endif %}>{{ cat }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-12">
-        <button type="submit" class="btn btn-primary">Aplicar Filtros</button>
+      <div class="col-md-3 d-flex align-items-end">
+        <button type="submit" class="btn btn-primary w-100">Aplicar Filtros</button>
       </div>
     </form>
 
@@ -49,43 +35,40 @@
       <div class="col-md-3"><div class="card p-3"><h6>Total Clientes</h6><p>{{ total_clientes }}</p></div></div>
       <div class="col-md-3"><div class="card p-3"><h6>Total Ventas</h6><p>S/ {{ '%.2f'|format(total_ventas) }}</p></div></div>
       <div class="col-md-3"><div class="card p-3"><h6>Productos Vendidos</h6><p>{{ productos_vendidos }}</p></div></div>
-      <div class="col-md-3"><div class="card p-3"><h6>Cliente que más compra</h6><p>{{ cliente_top }}</p></div></div>
+      <div class="col-md-3"><div class="card p-3"><h6>Mejor Cliente</h6><p>{{ mejor_cliente.nombre if mejor_cliente else 'N/A' }}</p></div></div>
     </div>
 
-    <!-- Productos más vendidos -->
+    <!-- Producto más y menos vendido -->
     <div class="row">
       <div class="col-md-6">
-        <h5>Productos Más Vendidos</h5>
-        <ul class="list-group mb-4">
-          {% for item in productos_top %}
-          <li class="list-group-item d-flex justify-content-between align-items-center">
-            {{ item.nombre }}
-            <span class="badge bg-primary">{{ item.total_vendido }}</span>
-          </li>
-          {% endfor %}
-        </ul>
+        <div class="card p-3">
+          <h5>Producto Más Vendido</h5>
+          <p>{{ mas_vendido.nombre if mas_vendido else 'Sin datos' }}</p>
+        </div>
       </div>
       <div class="col-md-6">
-        <h5>Producto Menos Vendido</h5>
-        <p>{{ producto_menos_vendido.nombre if producto_menos_vendido else 'Sin datos' }}</p>
+        <div class="card p-3">
+          <h5>Producto Menos Vendido</h5>
+          <p>{{ menos_vendido.nombre if menos_vendido else 'Sin datos' }}</p>
+        </div>
       </div>
     </div>
 
     <!-- Gráficos -->
-    <div class="row">
+    <div class="row mt-4">
       <div class="col-md-6">
         <h5>Ventas por Día</h5>
         <canvas id="ventasDiaChart"></canvas>
       </div>
       <div class="col-md-6">
-        <h5>Productos más vendidos por Día</h5>
+        <h5>Productos Vendidos por Día</h5>
         <canvas id="productosDiaChart"></canvas>
       </div>
     </div>
 
     <div class="row mt-4">
       <div class="col-md-12">
-        <h5>Ventas Totales por Mes</h5>
+        <h5>Ventas por Mes</h5>
         <canvas id="ventasMesChart"></canvas>
       </div>
     </div>
@@ -93,16 +76,16 @@
 
   <script>
     const ventasPorDia = {{ ventas_por_dia | tojson }};
-    const productosPorDia = {{ productos_dia | tojson }};
-    const ventasPorMes = {{ ventas_mes | tojson }};
+    const productosPorDia = {{ productos_por_dia | tojson }};
+    const ventasPorMes = {{ ventas_por_mes | tojson }};
 
     new Chart(document.getElementById('ventasDiaChart'), {
       type: 'bar',
       data: {
-        labels: ventasPorDia.map(v => v.fecha),
+        labels: ventasPorDia.map(v => v.fecha_emision),
         datasets: [{
           label: 'S/ Ventas',
-          data: ventasPorDia.map(v => v.total),
+          data: ventasPorDia.map(v => v.total_dia),
           backgroundColor: '#4e73df'
         }]
       },
@@ -112,10 +95,10 @@
     new Chart(document.getElementById('productosDiaChart'), {
       type: 'line',
       data: {
-        labels: productosPorDia.map(v => v.fecha),
+        labels: productosPorDia.map(v => v.fecha_emision),
         datasets: [{
           label: 'Productos Vendidos',
-          data: productosPorDia.map(v => v.total),
+          data: productosPorDia.map(v => v.cantidad),
           borderColor: '#36b9cc',
           backgroundColor: '#36b9cc33',
           fill: true
@@ -129,8 +112,8 @@
       data: {
         labels: ventasPorMes.map(v => v.mes),
         datasets: [{
-          label: 'Ventas Mensuales',
-          data: ventasPorMes.map(v => v.total),
+          label: 'Ventas por Mes',
+          data: ventasPorMes.map(v => v.total_mes),
           backgroundColor: '#1cc88a'
         }]
       },
