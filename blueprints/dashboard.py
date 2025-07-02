@@ -1,4 +1,3 @@
-
 from flask import Blueprint, render_template, session, redirect, url_for, request
 from data import get_db_connection
 import pymysql
@@ -11,13 +10,12 @@ def dashboard():
     if not nombre_usuario:
         return redirect(url_for('login.login'))
 
-    # Obtener filtros desde la URL
+    # Filtros desde la URL
     fecha_inicio = request.args.get('fecha_inicio')
     fecha_fin = request.args.get('fecha_fin')
-    categoria = request.args.get('categoria')
     cliente_id = request.args.get('cliente')
 
-    # Construcción dinámica de WHERE
+    # Construcción dinámica de condiciones
     condiciones = []
     params = []
 
@@ -29,12 +27,8 @@ def dashboard():
         condiciones.append("f.fecha_emision <= %s")
         params.append(fecha_fin)
 
-    if categoria:
-        condiciones.append("p.categoria LIKE %s")
-        params.append(f"%{categoria}%")
-
     if cliente_id:
-        condiciones.append("f.cliente_id = %s")
+        condiciones.append("f.cliente_documento_numero = %s")
         params.append(cliente_id)
 
     where_clause = " AND ".join(condiciones)
@@ -94,11 +88,11 @@ def dashboard():
     """, params)
     menos_vendido = cursor.fetchone()
 
-    # Cliente que más compra
+    # Mejor cliente
     cursor.execute(f"""
-        SELECT c.documento_numero, c.razon_social, SUM(f.total) AS total_compras
+        SELECT c.documento_numero, c.nombre, SUM(f.total) AS total_compras
         FROM clientes c
-        JOIN facturas f ON c.documento_numero = f.cliente_id
+        JOIN facturas f ON c.documento_numero = f.cliente_documento_numero
         JOIN detalle_factura df ON f.id = df.factura_id
         JOIN productos p ON df.producto_id = p.id
         {where_clause}
