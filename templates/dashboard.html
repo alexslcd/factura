@@ -1,188 +1,140 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard - Sistema de Facturación</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Interactivo</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
   <div class="container mt-4">
-    <h1 class="mb-4">Dashboard Interactivo</h1>
+    <h1 class="mb-4">Dashboard de Ventas</h1>
 
     <!-- Filtros -->
     <form method="get" class="row g-3 mb-4">
       <div class="col-md-3">
         <label for="fecha_inicio" class="form-label">Fecha Inicio</label>
-        <input type="date" class="form-control" name="fecha_inicio" value="{{ request.args.get('fecha_inicio', '') }}">
+        <input type="date" id="fecha_inicio" name="fecha_inicio" class="form-control" value="{{ filtros.fecha_inicio }}">
       </div>
       <div class="col-md-3">
         <label for="fecha_fin" class="form-label">Fecha Fin</label>
-        <input type="date" class="form-control" name="fecha_fin" value="{{ request.args.get('fecha_fin', '') }}">
+        <input type="date" id="fecha_fin" name="fecha_fin" class="form-control" value="{{ filtros.fecha_fin }}">
+      </div>
+      <div class="col-md-3">
+        <label for="cliente" class="form-label">Cliente</label>
+        <select id="cliente" name="cliente" class="form-select">
+          <option value="">Todos</option>
+          {% for cli in clientes %}
+          <option value="{{ cli.documento_numero }}" {% if cli.documento_numero == filtros.cliente %}selected{% endif %}>{{ cli.nombre }}</option>
+          {% endfor %}
+        </select>
       </div>
       <div class="col-md-3">
         <label for="categoria" class="form-label">Categoría</label>
-        <input type="text" class="form-control" name="categoria" placeholder="Ej: Alimentos" value="{{ request.args.get('categoria', '') }}">
-      </div>
-      <div class="col-md-3">
-        <label for="cliente" class="form-label">ID Cliente</label>
-        <input type="text" class="form-control" name="cliente" placeholder="ID Cliente" value="{{ request.args.get('cliente', '') }}">
+        <select id="categoria" name="categoria" class="form-select">
+          <option value="">Todas</option>
+          {% for cat in categorias %}
+          <option value="{{ cat }}" {% if cat == filtros.categoria %}selected{% endif %}>{{ cat }}</option>
+          {% endfor %}
+        </select>
       </div>
       <div class="col-12">
         <button type="submit" class="btn btn-primary">Aplicar Filtros</button>
       </div>
     </form>
 
-    <!-- KPIs -->
+    <!-- Métricas resumen -->
+    <div class="row mb-4">
+      <div class="col-md-3"><div class="card p-3"><h6>Total Clientes</h6><p>{{ total_clientes }}</p></div></div>
+      <div class="col-md-3"><div class="card p-3"><h6>Total Ventas</h6><p>S/ {{ '%.2f'|format(total_ventas) }}</p></div></div>
+      <div class="col-md-3"><div class="card p-3"><h6>Productos Vendidos</h6><p>{{ productos_vendidos }}</p></div></div>
+      <div class="col-md-3"><div class="card p-3"><h6>Cliente que más compra</h6><p>{{ cliente_top }}</p></div></div>
+    </div>
+
+    <!-- Productos más vendidos -->
     <div class="row">
-      <div class="col-md-3">
-        <div class="card">
-          <div class="card-body">
-            <h5 class="card-title">Clientes</h5>
-            <p class="card-text fs-4">{{ total_clientes }}</p>
-          </div>
-        </div>
+      <div class="col-md-6">
+        <h5>Productos Más Vendidos</h5>
+        <ul class="list-group mb-4">
+          {% for item in productos_top %}
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            {{ item.nombre }}
+            <span class="badge bg-primary">{{ item.total_vendido }}</span>
+          </li>
+          {% endfor %}
+        </ul>
       </div>
-      <div class="col-md-3">
-        <div class="card">
-          <div class="card-body">
-            <h5 class="card-title">Total Ventas</h5>
-            <p class="card-text fs-4">S/ {{ '%.2f' | format(total_ventas) }}</p>
-          </div>
-        </div>
+      <div class="col-md-6">
+        <h5>Producto Menos Vendido</h5>
+        <p>{{ producto_menos_vendido.nombre if producto_menos_vendido else 'Sin datos' }}</p>
       </div>
-      <div class="col-md-3">
-        <div class="card">
-          <div class="card-body">
-            <h5 class="card-title">Productos Vendidos</h5>
-            <p class="card-text fs-4">{{ productos_vendidos }}</p>
-          </div>
-        </div>
+    </div>
+
+    <!-- Gráficos -->
+    <div class="row">
+      <div class="col-md-6">
+        <h5>Ventas por Día</h5>
+        <canvas id="ventasDiaChart"></canvas>
       </div>
-      <div class="col-md-3">
-        <div class="card">
-          <div class="card-body">
-            <h5 class="card-title">Mejor Cliente</h5>
-            <p class="card-text">{{ mejor_cliente.razon_social if mejor_cliente else 'N/D' }}</p>
-            <small>Total: S/ {{ '%.2f' | format(mejor_cliente.total_compras) if mejor_cliente else '0.00' }}</small>
-          </div>
-        </div>
+      <div class="col-md-6">
+        <h5>Productos más vendidos por Día</h5>
+        <canvas id="productosDiaChart"></canvas>
       </div>
     </div>
 
     <div class="row mt-4">
-      <div class="col-md-6">
-        <div class="card">
-          <div class="card-body">
-            <h5 class="card-title">Producto Más Vendido</h5>
-            {% if mas_vendido %}
-              <p class="card-text">{{ mas_vendido.nombre }} ({{ mas_vendido.total_vendidos }} unidades)</p>
-            {% else %}
-              <p>No hay datos disponibles.</p>
-            {% endif %}
-          </div>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="card">
-          <div class="card-body">
-            <h5 class="card-title">Producto Menos Vendido</h5>
-            {% if menos_vendido %}
-              <p class="card-text">{{ menos_vendido.nombre }} ({{ menos_vendido.total_vendidos }} unidades)</p>
-            {% else %}
-              <p>No hay datos disponibles.</p>
-            {% endif %}
-          </div>
-        </div>
+      <div class="col-md-12">
+        <h5>Ventas Totales por Mes</h5>
+        <canvas id="ventasMesChart"></canvas>
       </div>
     </div>
-
-    <!-- Gráfico: Ventas por Día -->
-    <div class="mt-5">
-      <h4>Ventas por Día</h4>
-      <canvas id="ventasPorDiaChart" height="100"></canvas>
-    </div>
-
-    <!-- Gráfico: Ventas por Mes -->
-    <div class="mt-5">
-      <h4>Ventas por Mes</h4>
-      <canvas id="ventasPorMesChart" height="100"></canvas>
-    </div>
-
-    <!-- Productos más vendidos por día (tabla) -->
-    <div class="mt-5">
-      <h4>Productos más vendidos por Día</h4>
-      <div class="table-responsive">
-        <table class="table table-bordered">
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Producto</th>
-              <th>Cantidad</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for p in productos_por_dia %}
-            <tr>
-              <td>{{ p.fecha_emision }}</td>
-              <td>{{ p.nombre }}</td>
-              <td>{{ p.cantidad }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-
   </div>
 
   <script>
-    const ventasPorDia = {{ ventas_por_dia|tojson }};
-    const ventasPorMes = {{ ventas_por_mes|tojson }};
+    const ventasPorDia = {{ ventas_por_dia | tojson }};
+    const productosPorDia = {{ productos_dia | tojson }};
+    const ventasPorMes = {{ ventas_mes | tojson }};
 
-    const ctx1 = document.getElementById('ventasPorDiaChart').getContext('2d');
-    new Chart(ctx1, {
+    new Chart(document.getElementById('ventasDiaChart'), {
       type: 'bar',
       data: {
-        labels: ventasPorDia.map(row => row.fecha_emision),
+        labels: ventasPorDia.map(v => v.fecha),
         datasets: [{
-          label: 'Ventas por Día (S/)',
-          data: ventasPorDia.map(row => row.total_dia),
+          label: 'S/ Ventas',
+          data: ventasPorDia.map(v => v.total),
           backgroundColor: '#4e73df'
         }]
       },
-      options: {
-        responsive: true,
-        scales: {
-          y: {
-            beginAtZero: true
-          }
-        }
-      }
+      options: { responsive: true, plugins: { legend: { display: false } } }
     });
 
-    const ctx2 = document.getElementById('ventasPorMesChart').getContext('2d');
-    new Chart(ctx2, {
+    new Chart(document.getElementById('productosDiaChart'), {
       type: 'line',
       data: {
-        labels: ventasPorMes.map(row => row.mes),
+        labels: productosPorDia.map(v => v.fecha),
         datasets: [{
-          label: 'Ventas por Mes (S/)',
-          data: ventasPorMes.map(row => row.total_mes),
-          borderColor: '#1cc88a',
-          fill: false
+          label: 'Productos Vendidos',
+          data: productosPorDia.map(v => v.total),
+          borderColor: '#36b9cc',
+          backgroundColor: '#36b9cc33',
+          fill: true
         }]
       },
-      options: {
-        responsive: true,
-        scales: {
-          y: {
-            beginAtZero: true
-          }
-        }
-      }
+      options: { responsive: true }
+    });
+
+    new Chart(document.getElementById('ventasMesChart'), {
+      type: 'bar',
+      data: {
+        labels: ventasPorMes.map(v => v.mes),
+        datasets: [{
+          label: 'Ventas Mensuales',
+          data: ventasPorMes.map(v => v.total),
+          backgroundColor: '#1cc88a'
+        }]
+      },
+      options: { responsive: true }
     });
   </script>
 </body>
