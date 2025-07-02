@@ -96,13 +96,13 @@ def dashboard():
 
     # Cliente que más compra
     cursor.execute(f"""
-        SELECT c.id, c.razon_social, SUM(f.total) AS total_compras
+        SELECT c.documento_numero, c.razon_social, SUM(f.total) AS total_compras
         FROM clientes c
-        JOIN facturas f ON c.id = f.cliente_id
+        JOIN facturas f ON c.documento_numero = f.cliente_id
         JOIN detalle_factura df ON f.id = df.factura_id
         JOIN productos p ON df.producto_id = p.id
         {where_clause}
-        GROUP BY c.id
+        GROUP BY c.documento_numero
         ORDER BY total_compras DESC
         LIMIT 1
     """, params)
