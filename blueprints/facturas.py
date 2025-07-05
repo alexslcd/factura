@@ -397,6 +397,13 @@ def _generar_pdf_comprobante(numero, tipo_doc):
         igv = subtotal * Decimal('0.18')
         total = subtotal + igv
 
+        # Función para convertir número a letras
+        def numero_a_letras(numero):
+            # ... (implementación de la función de conversión)
+            pass
+
+        total_en_letras = numero_a_letras(total)
+
         # Crear PDF
         pdf = FPDF('P', 'mm', 'A4')
         pdf.add_page()
@@ -475,6 +482,12 @@ def _generar_pdf_comprobante(numero, tipo_doc):
         pdf.set_text_color(255, 255, 255)
         pdf.cell(sum(widths[:3]), 8, "TOTAL:", 1, 0, 'R', 1)
         pdf.cell(widths[3], 8, f"S/ {total:.2f}", 1, 1, 'R', 1)
+
+        # Total en letras
+        pdf.ln(5)
+        pdf.set_font('Arial', '', 10)
+        pdf.set_text_color(0, 0, 0)
+        pdf.cell(0, 8, f"Son: {total_en_letras}", ln=1)
 
         pdf.ln(10)
         pdf.set_font('Arial', 'I', 8)
@@ -1198,8 +1211,14 @@ def generar_pdf_preview():
         pdf.cell(sum(widths[:3]), 8, "TOTAL:", border=1, align='R', fill=True)
         pdf.cell(widths[3], 8, data['total'], border=1, align='R', fill=True)
         
+        # Total en letras
+        pdf.ln(5)
+        pdf.set_font('Arial', '', 10)
+        pdf.set_text_color(0, 0, 0)  # Negro
+        pdf.cell(0, 8, f"Son: {data['totalEnLetras']}", ln=1)
+        
         # Pie de página
-        pdf.ln(15)
+        pdf.ln(10)
         pdf.set_font('Arial', 'I', 8)
         pdf.set_text_color(100, 100, 100)  # Gris oscuro
         pdf.cell(0, 5, "¡Gracias por su compra!", ln=1, align='C')
@@ -1290,3 +1309,40 @@ def registrar_cliente_api():
     finally:
         cursor.close()
         conn.close()
+
+
+def numero_a_letras(numero):
+    unidades = ['', 'UNO', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE']
+    decenas = ['DIEZ', 'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISEIS', 'DIECISIETE', 'DIECIOCHO', 'DIECINUEVE']
+    veintenas = ['VEINTE', 'VEINTIUNO', 'VEINTIDOS', 'VEINTITRES', 'VEINTICUATRO', 'VEINTICINCO', 
+                 'VEINTISEIS', 'VEINTISIETE', 'VEINTIOCHO', 'VEINTINUEVE']
+    decenas_completas = ['', '', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA']
+    centenas = ['CIEN', 'CIENTO', 'DOSCIENTOS', 'TRESCIENTOS', 'CUATROCIENTOS', 'QUINIENTOS', 
+                'SEISCIENTOS', 'SETECIENTOS', 'OCHOCIENTOS', 'NOVECIENTOS']
+    
+    entero = int(numero)
+    decimal = int(round((numero - entero) * 100))
+    
+    if entero == 0:
+        letras = 'CERO'
+    elif entero < 10:
+        letras = unidades[entero]
+    elif entero < 20:
+        letras = decenas[entero - 10]
+    elif entero < 30:
+        letras = veintenas[entero - 20]
+    elif entero < 100:
+        letras = decenas_completas[entero // 10]
+        if entero % 10 != 0:
+            letras += ' Y ' + unidades[entero % 10]
+    elif entero < 1000:
+        if entero == 100:
+            letras = 'CIEN'
+        else:
+            letras = centenas[entero // 100]
+            if entero % 100 != 0:
+                letras += ' ' + numero_a_letras(entero % 100)
+    else:
+        letras = 'NÚMERO MUY GRANDE'
+    
+    return f"{letras} CON {decimal:02d}/100 SOLES"
