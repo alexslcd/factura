@@ -1215,7 +1215,7 @@ def generar_pdf_preview():
         pdf.ln(5)
         pdf.set_font('Arial', '', 10)
         pdf.set_text_color(0, 0, 0)  # Negro
-        pdf.cell(0, 8, f"Son: {data['totalEnLetras']}", ln=1)
+        pdf.cell(2, 8, f"Son: {data['totalEnLetras']}", ln=1)
         
         # Pie de página
         pdf.ln(10)
