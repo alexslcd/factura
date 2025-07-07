@@ -179,17 +179,14 @@ def stock():
 
     cursor.execute("""
         SELECT 
-            p.id, p.nombre, p.descripcion, p.precio, p.stock, 
+            p.id, p.codigo_producto, p.nombre, p.descripcion, p.precio, p.stock, 
             c.nombre AS categoria, 
             pr.nombre AS proveedor_nombre, 
-            pr.documento_tipo, pr.documento_numero,
-            GROUP_CONCAT(DISTINCT f.numero_factura ORDER BY f.numero_factura SEPARATOR ', ') AS numeros_factura
+            pr.documento_tipo, pr.documento_numero
         FROM productos p
         JOIN proveedores pr ON p.proveedor_id = pr.id
         JOIN categoria c ON p.categoria_id = c.id
-        LEFT JOIN detalle_factura df ON p.id = df.producto_id
-        LEFT JOIN facturas f ON df.factura_id = f.id
-        GROUP BY p.id, p.nombre, p.descripcion, p.precio, p.stock, c.nombre, proveedor_nombre, pr.documento_tipo, pr.documento_numero
+        GROUP BY p.id, p.codigo_producto, p.nombre, p.descripcion, p.precio, p.stock, c.nombre, proveedor_nombre, pr.documento_tipo, pr.documento_numero
     """)
     productos = cursor.fetchall()
 
@@ -213,13 +210,14 @@ def stock():
             mensaje += f'{len(productos_bajo_stock)} producto(s) tienen bajo stock (≤ {umbral_stock_bajo}).'
         flash(mensaje.strip(), 'warning')
 
-    return render_template('productos/stock.html', productos=productos, categorias=categorias, categoria_seleccionada=None, nombre_busqueda='', numero_factura_busqueda='')
+    return render_template('productos/stock.html', productos=productos, categorias=categorias, categoria_seleccionada=None, nombre_busqueda='', codigo_producto_busqueda='')
+
 
 @productos_bp.route('/buscar_stock', methods=['POST'])
 def buscar_stock():
     categoria = request.form.get('categoria', '').strip()
     nombre = request.form.get('nombre', '').strip()
-    numero_factura = request.form.get('numero_factura', '').strip()
+    codigo_producto = request.form.get('codigo_producto', '').strip()
 
     try:
         conn = get_db_connection()
@@ -227,16 +225,13 @@ def buscar_stock():
 
         sql = """
             SELECT 
-                p.id, p.nombre, p.descripcion, p.precio, p.stock, 
+                p.id, p.codigo_producto, p.nombre, p.descripcion, p.precio, p.stock, 
                 c.nombre AS categoria,
                 pr.nombre AS proveedor_nombre, 
-                pr.documento_tipo, pr.documento_numero,
-                GROUP_CONCAT(DISTINCT f.numero_factura ORDER BY f.numero_factura SEPARATOR ', ') AS numeros_factura
+                pr.documento_tipo, pr.documento_numero
             FROM productos p
             JOIN proveedores pr ON p.proveedor_id = pr.id
             JOIN categoria c ON p.categoria_id = c.id
-            LEFT JOIN detalle_factura df ON p.id = df.producto_id
-            LEFT JOIN facturas f ON df.factura_id = f.id
             WHERE 1=1
         """
         params = []
@@ -249,12 +244,12 @@ def buscar_stock():
             sql += " AND LOWER(p.nombre) LIKE %s"
             params.append(f"%{nombre.lower()}%")
 
-        if numero_factura:
-            sql += " AND f.numero_factura LIKE %s"
-            params.append(f"%{numero_factura}%")
+        if codigo_producto:
+            sql += " AND p.codigo_producto LIKE %s"
+            params.append(f"%{codigo_producto}%")
 
         sql += """
-            GROUP BY p.id, p.nombre, p.descripcion, p.precio, p.stock, categoria, proveedor_nombre, pr.documento_tipo, pr.documento_numero
+            GROUP BY p.id, p.codigo_producto, p.nombre, p.descripcion, p.precio, p.stock, categoria, proveedor_nombre, pr.documento_tipo, pr.documento_numero
         """
 
         cursor.execute(sql, tuple(params))
@@ -286,12 +281,13 @@ def buscar_stock():
             categorias=categorias,
             categoria_seleccionada=categoria,
             nombre_busqueda=nombre,
-            numero_factura_busqueda=numero_factura
+            codigo_producto_busqueda=codigo_producto
         )
 
     except Exception as e:
         flash(f'Error al buscar productos: {e}', 'danger')
         return redirect(url_for('productos.stock'))
+
 
 @productos_bp.route('/actualizar_stock/<int:id>', methods=['POST'])
 def actualizar_stock(id):
