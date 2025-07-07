@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gestión de Productos</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(135deg, #f1f4f8 0%, #d7dde5 100%);
+      color: #333;
+    }
+    h1 {
+      font-weight: 700;
+      color: #2c3e50;
+    }
+    .container {
+      max-width: 1100px;
+    }
+    .card {
+      border: none;
+      border-radius: 0.85rem;
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+      background: #ffffff;
+    }
+    .card-header {
+      background-color: #4a89dc;
+      color: #fff;
+      font-size: 1.25rem;
+      font-weight: 600;
+      border-radius: 0.85rem 0.85rem 0 0;
+    }
+    .form-label {
+      font-weight: 600;
+      color: #2c3e50;
+    }
+    .btn i {
+      margin-right: 6px;
+    }
+    .btn-submit {
+      min-width: 200px;
+      font-weight: 600;
+    }
+    .btn-success {
+      background-color: #4a89dc;
+      border-color: #4a89dc;
+    }
+    .btn-success:hover {
+      background-color: #3b6ecc;
+      border-color: #3b6ecc;
+    }
+    .btn-warning {
+      background-color: #ffc107;
+      border-color: #ffc107;
+      color: #212529;
+    }
+    .btn-warning:hover {
+      background-color: #e0a800;
+      border-color: #d39e00;
+    }
+    .btn-outline-secondary {
+      color: #4a89dc;
+      border-color: #4a89dc;
+    }
+    .btn-outline-secondary:hover {
+      background-color: #4a89dc;
+      color: #fff;
+    }
+    .form-control, .form-select {
+      border-radius: 0.5rem;
+    }
+    .form-control:focus, .form-select:focus {
+      border-color: #4a89dc;
+      box-shadow: 0 0 0 0.2rem rgba(74, 137, 220, 0.25);
+    }
+    .alert {
+      border-left: 6px solid #4a89dc;
+      background-color: #e9f1fc;
+      color: #2c3e50;
+    }
+    .alert-dismissible .btn-close {
+      padding: 1rem;
+    }
+    .invalid-feedback {
+      color: #d9534f;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container py-5">
+    <a href="{{ url_for('dashboard.dashboard') }}" class="btn btn-outline-secondary mb-4">
+      <i class="bi bi-arrow-left"></i> Volver
+    </a>
+
+    <h1 class="text-center mb-4">🛠️ Gestión de Productos</h1>
+
+    {% with mensajes = get_flashed_messages(with_categories=true) %}
+      {% if mensajes %}
+        {% for categoria, mensaje in mensajes %}
+          {% if categoria == 'stock_similar' or categoria == 'producto_actualizado' %}
+            <!-- Modal para stock similar o producto actualizado -->
+            <div class="modal fade" id="stockModal" tabindex="-1" aria-labelledby="stockModalLabel" aria-hidden="true">
+              <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                  <div class="modal-header {% if categoria == 'stock_similar' %}bg-warning text-dark{% else %}bg-success text-white{% endif %}">
+                    <h5 class="modal-title" id="stockModalLabel">
+                      <i class="bi {% if categoria == 'stock_similar' %}bi-exclamation-triangle-fill{% else %}bi-check-circle-fill{% endif %}"></i>
+                      {% if categoria == 'stock_similar' %}Advertencia{% else %}Éxito{% endif %}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                  </div>
+                  <div class="modal-body">
+                    {{ mensaje }}
+                  </div>
+                  <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% else %}
+            <!-- Mensaje normal -->
+            <div class="alert alert-{{ categoria }} alert-dismissible fade show" role="alert">
+              {{ mensaje }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+            </div>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="card">
+      <div class="card-header">
+        <i class="bi {{ 'bi-pencil-square' if producto else 'bi-plus-circle' }}"></i>
+        {{ 'Editar Producto' if producto else 'Agregar Producto' }}
+      </div>
+      <div class="card-body">
+        <form method="POST"
+              action="{{ url_for('productos.mostrar_y_agregar_productos') if not producto else url_for('productos.editar_producto', id=producto['id']) }}"
+              class="needs-validation" novalidate>
+
+          <!-- Fila 1 -->
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label for="nombre" class="form-label">Nombre *</label>
+              <input type="text" id="nombre" name="nombre" class="form-control" required
+                     value="{{ producto['nombre'] if producto else '' }}" />
+              <div class="invalid-feedback">Ingrese un nombre válido.</div>
+            </div>
+            <div class="col-md-4">
+              <label for="descripcion" class="form-label">Descripción</label>
+              <input type="text" id="descripcion" name="descripcion" class="form-control"
+                     value="{{ producto['descripcion'] if producto else '' }}" />
+            </div>
+            <div class="col-md-2">
+              <label for="precio" class="form-label">Precio *</label>
+              <input type="number" step="0.01" id="precio" name="precio" class="form-control" required
+                     value="{{ producto['precio'] if producto else '' }}" />
+              <div class="invalid-feedback">Ingrese un precio válido.</div>
+            </div>
+            <div class="col-md-2">
+              <label for="stock" class="form-label">Stock *</label>
+              <input type="number" id="stock" name="stock" class="form-control" required
+                     value="{{ producto['stock'] if producto else '' }}" />
+              <div class="invalid-feedback">Ingrese la cantidad en stock.</div>
+            </div>
+          </div>
+
+          <!-- Fila 2 -->
+          <div class="row g-3 mt-3">
+            <div class="col-md-6">
+              <label for="proveedor_id" class="form-label">Proveedor *</label>
+              <select id="proveedor_id" name="proveedor_id" class="form-select" required>
+                <option value="" disabled {% if not producto %}selected{% endif %}>Seleccione el proveedor</option>
+                {% for proveedor in proveedores %}
+                  <option value="{{ proveedor['id'] }}"
+                          data-documento_tipo="{{ proveedor['documento_tipo'] }}"
+                          data-documento_numero="{{ proveedor['documento_numero'] }}"
+                          {% if producto and proveedor['id'] == producto['proveedor_id'] %}selected{% endif %}>
+                    {{ proveedor['nombre'] }}
+                  </option>
+                {% endfor %}
+              </select>
+              <div class="invalid-feedback">Seleccione un proveedor.</div>
+            </div>
+            <div class="col-md-3">
+              <label for="documento_tipo" class="form-label">Tipo Documento</label>
+              <input type="text" id="documento_tipo" name="documento_tipo" class="form-control" readonly
+                     value="{{ producto['documento_tipo'] if producto else '' }}" />
+            </div>
+            <div class="col-md-3">
+              <label for="documento_numero" class="form-label">Número Documento</label>
+              <input type="text" id="documento_numero" name="documento_numero" class="form-control" readonly
+                     value="{{ producto['documento_numero'] if producto else '' }}" />
+            </div>
+          </div>
+
+          <!-- Fila 3 -->
+          <div class="row g-3 mt-3">
+            <div class="col-md-6">
+              <label for="categoria_id" class="form-label">Categoría *</label>
+              <select id="categoria_id" name="categoria_id" class="form-select" required>
+                <option value="" disabled {% if not producto %}selected{% endif %}>Seleccione la categoría</option>
+                {% for categoria in categorias %}
+                  <option value="{{ categoria['id'] }}"
+                    {% if producto and categoria['id'] == producto['categoria_id'] %}selected{% endif %}>
+                    {{ categoria['nombre'] }}
+                  </option>
+                {% endfor %}
+              </select>
+              <div class="invalid-feedback">Seleccione una categoría.</div>
+            </div>
+            <div class="col-md-6">
+              <label for="estado" class="form-label">Estado *</label>
+              <select id="estado" name="estado" class="form-select" required>
+                <option value="1" {% if producto and producto['estado'] %}selected{% endif %}>Activo</option>
+                <option value="0" {% if producto and not producto['estado'] %}selected{% endif %}>Inactivo</option>
+              </select>
+              <div class="invalid-feedback">Seleccione un estado.</div>
+            </div>
+          </div>
+
+          <!-- Botones -->
+          <div class="mt-4 d-flex gap-3">
+            <button type="submit" class="btn btn-{{ 'warning' if producto else 'success' }} btn-submit">
+              <i class="bi {{ 'bi-pencil' if producto else 'bi-plus-lg' }}"></i>
+              {{ 'Actualizar Producto' if producto else 'Agregar Producto' }}
+            </button>
+            {% if producto %}
+              <a href="{{ url_for('productos.mostrar_y_agregar_productos') }}" class="btn btn-secondary btn-submit">
+                <i class="bi bi-x-circle"></i> Cancelar
+              </a>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const proveedorSelect = document.getElementById('proveedor_id');
+      const tipoInput = document.getElementById('documento_tipo');
+      const numeroInput = document.getElementById('documento_numero');
+
+      function actualizarDocumento() {
+        const opcion = proveedorSelect.options[proveedorSelect.selectedIndex];
+        tipoInput.value = opcion?.dataset.documento_tipo || '';
+        numeroInput.value = opcion?.dataset.documento_numero || '';
+      }
+
+      proveedorSelect.addEventListener('change', actualizarDocumento);
+      actualizarDocumento();
+
+      const form = document.querySelector('form');
+      form.addEventListener('submit', function (event) {
+        if (!form.checkValidity()) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        form.classList.add('was-validated');
+      });
+
+      const modalStock = document.getElementById('stockModal');
+      if (modalStock) {
+        const modalInstance = new bootstrap.Modal(modalStock);
+        modalInstance.show();
+      }
+    });
+  </script>
+</body>
+</html>

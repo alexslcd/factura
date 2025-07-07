@@ -1,0 +1,76 @@
+-- Crear base de datos
+CREATE DATABASE IF NOT EXISTS facturacion_db;
+USE facturacion_db;
+
+-- Tabla: usuarios
+CREATE TABLE usuarios (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) NOT NULL,
+    correo VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    rol ENUM('admin', 'vendedor') DEFAULT 'vendedor',
+    estado TINYINT DEFAULT 1,
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabla: proveedores
+CREATE TABLE proveedores (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    direccion VARCHAR(255),
+    telefono VARCHAR(20),
+    correo VARCHAR(100),
+    estado TINYINT DEFAULT 1,
+    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabla: clientes
+CREATE TABLE clientes (
+    documento_numero VARCHAR(20) PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    documento_tipo ENUM('DNI', 'RUC') DEFAULT 'DNI',
+    direccion VARCHAR(255),
+    telefono VARCHAR(20),
+    correo VARCHAR(100),
+    estado TINYINT DEFAULT 1,
+    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tabla: productos
+CREATE TABLE productos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    nombre VARCHAR(100) NOT NULL,
+    descripcion TEXT,
+    precio DECIMAL(10,2) NOT NULL,
+    stock INT NOT NULL DEFAULT 0,
+    proveedor_id INT NOT NULL,
+    categoria VARCHAR(50) NOT NULL;
+    estado TINYINT DEFAULT 1,
+    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (proveedor_id) REFERENCES proveedores(id)
+);
+
+-- Tabla: facturas
+CREATE TABLE facturas (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    numero_factura VARCHAR(20) NOT NULL,  -- Cambié a una columna normal
+    cliente_documento_numero VARCHAR(20) NOT NULL,
+    usuario_id INT NOT NULL,
+    usuario_username VARCHAR(50), -- Copia del username al momento de emitir
+    fecha_emision TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    total DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (cliente_documento_numero) REFERENCES clientes(documento_numero),
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+);
+
+-- Tabla: detalle_factura
+CREATE TABLE detalle_factura (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    factura_id INT NOT NULL,
+    producto_id INT NOT NULL,
+    cantidad INT NOT NULL,
+    precio_unitario DECIMAL(10,2) NOT NULL,
+    subtotal DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (factura_id) REFERENCES facturas(id),
+    FOREIGN KEY (producto_id) REFERENCES productos(id)
+);

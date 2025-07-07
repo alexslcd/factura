@@ -1,0 +1,31 @@
+factura/
+│
+├── blueprints/               # Aquí van los blueprints para modularizar las rutas
+│   ├── __init__.py           # Inicializa los blueprints en la app principal
+│   ├── login.py              # Rutas de autenticación (login, validación de usuario)
+│   ├── clientes.py           # Rutas para manejar los clientes
+│   ├── productos.py          # Rutas para manejar los productos
+│   ├── facturas.py           # Rutas para manejar las facturas
+│   ├── proveedores.py        # Rutas para manejar los proveedores
+│   └── registro_usuarios.py # Rutas para la creación de usuarios
+│
+├── static/                   # Archivos estáticos (CSS, JS, imágenes, etc.)
+│   ├── css/                  # Archivos CSS (incluyendo Bootstrap)
+│   └── js/                   # Archivos JavaScript
+│
+├── templates/                # Plantillas HTML (Jinja2)
+│   ├── base.html             # Layout base con los componentes comunes
+│   ├── login.html            # Plantilla para login
+│   ├── dashboard.html        # Página de inicio después del login
+│   ├── usuarios/             # Templates para usuarios (crear, editar, ver)
+│   ├── clientes/             # Templates para clientes
+│   ├── productos/            # Templates para productos
+│   ├── facturas/             # Templates para facturación
+│   └── proveedores/          # Templates para proveedores
+│
+├── utils/                    # Funciones utilitarias
+│   └── pdf_gen.py            # Funciones para generar PDFs de facturas
+│
+├── data.py                   # Archivo de configuración para la aplicación
+├── app.py                    # Script para ejecutar la app
+└── requirements.txt          # Dependencias del proyecto
