@@ -457,67 +457,76 @@
       }
 
       // --- FUNCIÓN PARA CONVERTIR NÚMERO A LETRAS ---
-      function numeroALetras(numero) {
-        const unidades = ['', 'UN', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE'];
-        const decenas = ['DIEZ', 'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISEIS', 'DIECISIETE', 'DIECIOCHO', 'DIECINUEVE'];
-        const veintenas = ['VEINTE', 'VEINTIUN', 'VEINTIDOS', 'VEINTITRES', 'VEINTICUATRO', 'VEINTICINCO', 'VEINTISEIS', 'VEINTISIETE', 'VEINTIOCHO', 'VEINTINUEVE'];
-        const decenasCompletas = ['', '', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA'];
-        const centenas = ['CIEN', 'CIENTO', 'DOSCIENTOS', 'TRESCIENTOS', 'CUATROCIENTOS', 'QUINIENTOS', 'SEISCIENTOS', 'SETECIENTOS', 'OCHOCIENTOS', 'NOVECIENTOS'];
-        
-        let entero = Math.floor(numero);
-        let decimal = Math.round((numero - entero) * 100);
-        let letras = '';
+          function numeroALetras(num) {
+            const unidades = ['', 'UN', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE'];
+            const decenas = ['DIEZ', 'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISÉIS', 'DIECISIETE', 'DIECIOCHO', 'DIECINUEVE'];
+            const decenasCompletas = ['', '', 'VEINTE', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA'];
+            const centenas = ['', 'CIENTO', 'DOSCIENTOS', 'TRESCIENTOS', 'CUATROCIENTOS', 'QUINIENTOS', 'SEISCIENTOS', 'SETECIENTOS', 'OCHOCIENTOS', 'NOVECIENTOS'];
 
-        if (entero === 0) {
-          letras = 'CERO';
-        } else if (entero < 10) {
-          letras = unidades[entero];
-        } else if (entero < 20) {
-          letras = decenas[entero - 10];
-        } else if (entero < 30) {
-          letras = veintenas[entero - 20];
-        } else if (entero < 100) {
-          letras = decenasCompletas[Math.floor(entero / 10)];
-          if (entero % 10 !== 0) {
-            letras += ' Y ' + unidades[entero % 10];
-          }
-        } else if (entero < 1000) {
-          if (entero === 100) {
-            letras = 'CIEN';
-          } else {
-            letras = centenas[Math.floor(entero / 100)];
-            if (entero % 100 !== 0) {
-              letras += ' ' + numeroALetras(entero % 100);
+            function convertir(n) {
+              let letras = '';
+              if (n === 0) {
+                letras = 'CERO';
+              } else if (n < 10) {
+                letras = unidades[n];
+              } else if (n < 20) {
+                letras = decenas[n - 10];
+              } else if (n < 100) {
+                letras = decenasCompletas[Math.floor(n / 10)];
+                if (n % 10 !== 0) {
+                  letras += ' Y ' + unidades[n % 10];
+                }
+              } else if (n < 1000) {
+                if (n === 100) {
+                  letras = 'CIEN';
+                } else {
+                  letras = centenas[Math.floor(n / 100)];
+                  const resto = n % 100;
+                  if (resto > 0) {
+                    letras += ' ' + convertir(resto);
+                  }
+                }
+              } else if (n < 1000000) {
+                const miles = Math.floor(n / 1000);
+                const resto = n % 1000;
+                if (miles === 1) {
+                  letras = 'MIL';
+                } else {
+                  letras = convertir(miles) + ' MIL';
+                }
+                if (resto > 0) {
+                  letras += ' ' + convertir(resto);
+                }
+              } else if (n < 1000000000) {
+                const millones = Math.floor(n / 1000000);
+                const resto = n % 1000000;
+                if (millones === 1) {
+                  letras = 'UN MILLÓN';
+                } else {
+                  letras = convertir(millones) + ' MILLONES';
+                }
+                if (resto > 0) {
+                  letras += ' ' + convertir(resto);
+                }
+              }
+              return letras;
             }
-          }
-        } else if (entero < 1000000) {
-          let miles = Math.floor(entero / 1000);
-          let resto = entero % 1000;
-          
-          letras = numeroALetras(miles) + ' MIL';
-          if (resto > 0) {
-            letras += ' ' + numeroALetras(resto);
-          }
-        } else if (entero < 1000000000) {
-          let millones = Math.floor(entero / 1000000);
-          let resto = entero % 1000000;
-          
-          letras = numeroALetras(millones) + (millones === 1 ? ' MILLON' : ' MILLONES');
-          if (resto > 0) {
-            letras += ' ' + numeroALetras(resto);
-          }
-        }
 
-        // Ajustar para "UNO" -> "UN"
-        letras = letras.replace(/UNO$/, 'UN');
-        letras = letras.replace(/UN MIL/, 'UN MIL');
-        letras = letras.replace(/VEINTIUN/, 'VEINTIUN');
+            // Redondeamos a 2 decimales
+            num = parseFloat(num).toFixed(2);
+            const partes = num.split('.');
+            const entero = parseInt(partes[0], 10);
+            const decimal = partes[1];
 
-        // Convertir a mayúsculas y agregar los decimales
-        letras = letras.toUpperCase() + ' CON ' + decimal.toString().padStart(2, '0') + '/100 SOLES';
+            let letrasFinal = convertir(entero).trim();
 
-        return letras;
-      }
+            // Ajustes de UNO -> UN
+            letrasFinal = letrasFinal.replace(/\bUNO\b/g, 'UN');
+            letrasFinal = letrasFinal.replace(/\bUN MIL\b/g, 'MIL');
+
+            letrasFinal += ` CON ${decimal}/100 SOLES`;
+            return letrasFinal;
+          }
 
       // --- ACTUALIZA UNA FILA DE PRODUCTO ---
       function actualizarFila(row) {
