@@ -338,12 +338,17 @@
               <tbody>
                 <tr class="producto-row">
                   <td>
-                    <select name="producto_id" class="form-select form-select-sm producto-select" required>
-                      <option value="" selected disabled>Seleccione producto</option>
-                      {% for producto in productos %}
-                        <option value="{{ producto.id }}" data-precio="{{ producto.precio }}">{{ producto.nombre }}</option>
-                      {% endfor %}
-                    </select>
+                   <select name="producto_id" class="form-select form-select-sm producto-select" required>
+                  <option value="" selected disabled>Seleccione producto</option>
+                    {% for producto in productos %}
+                      <option value="{{ producto.id }}" 
+                              data-precio="{{ producto.precio }}" 
+                              data-codigo="{{ producto.codigo_producto }}">
+                        {{ producto.codigo_producto }} - {{ producto.nombre }}
+                      </option>
+                    {% endfor %}
+                  </select>
+
                   </td>
                   <td><input type="number" name="cantidad" class="form-control form-control-sm cantidad-input text-end" min="1" value="1" required /></td>
                   <td class="precio-unitario text-end">S/ 0.00</td>
@@ -713,97 +718,101 @@
 
       obtenerNumeroDocumento(document.getElementById('tipoDocumento').value);
 
-      // --- GUARDAR Y GENERAR PDF AUTOMÁTICAMENTE ---
-      document.getElementById('btnGuardar').addEventListener('click', async function () {
-        const form = document.getElementById('facturaForm');
-        const filasProductos = document.querySelectorAll('.producto-row');
+// --- GUARDAR Y GENERAR PDF AUTOMÁTICAMENTE ---
+document.getElementById('btnGuardar').addEventListener('click', async function () {
+  const form = document.getElementById('facturaForm');
+  const filasProductos = document.querySelectorAll('.producto-row');
 
-        if (document.getElementById('clientCard').classList.contains('d-none')) {
-          alert('Debe seleccionar un cliente antes de guardar.');
-          return;
-        }
+  if (document.getElementById('clientCard').classList.contains('d-none')) {
+    alert('Debe seleccionar un cliente antes de guardar.');
+    return;
+  }
 
-        if (
-          filasProductos.length === 0 ||
-          (filasProductos.length === 1 && filasProductos[0].querySelector('.producto-select').value === '')
-        ) {
-          alert('Agregue al menos un producto');
-          return;
-        }
+  if (
+    filasProductos.length === 0 ||
+    (filasProductos.length === 1 && filasProductos[0].querySelector('.producto-select').value === '')
+  ) {
+    alert('Agregue al menos un producto');
+    return;
+  }
 
-        try {
-          const formData = new FormData(form);
+  try {
+    const formData = new FormData(form);
 
-          const response = await fetch('/facturas/nueva', {
-            method: 'POST',
-            body: formData
-          });
+    const response = await fetch('/facturas/nueva', {
+      method: 'POST',
+      body: formData
+    });
 
-          const redireccion = response.redirected ? response.url : null;
-          if (!response.ok && !redireccion) throw new Error('Error al guardar la factura');
+    const redireccion = response.redirected ? response.url : null;
+    if (!response.ok && !redireccion) throw new Error('Error al guardar la factura');
 
-          // Generar PDF
-          const datosFactura = {
-            tipoDocumento: document.getElementById('tipoDocumento').value,
-            numeroDocumento: document.getElementById('numeroDocumento').value,
-            cliente: {
-              nombre: document.getElementById('cliente_nombre').value,
-              direccion: document.getElementById('cliente_direccion').value,
-              telefono: document.getElementById('cliente_telefono').value,
-              documento: document.getElementById('cliente_documento').value
-            },
-            productos: [],
-            subtotal: document.getElementById('subtotalDisplay').textContent,
-            igv: document.getElementById('igvDisplay').textContent,
-            total: document.getElementById('totalFactura').textContent,
-            totalEnLetras: document.getElementById('totalEnLetras').textContent,
-            fecha: new Date().toLocaleDateString('es-PE', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric'
-            })
-          };
+    // Preparar datos del PDF
+    const datosFactura = {
+      tipoDocumento: document.getElementById('tipoDocumento').value || '',
+      numeroDocumento: document.getElementById('numeroDocumento').value || '',
+      cliente: {
+        nombre: document.getElementById('cliente_nombre').value || '',
+        direccion: document.getElementById('cliente_direccion').value || '',
+        telefono: document.getElementById('cliente_telefono').value || '',
+        documento: document.getElementById('cliente_documento').value || ''
+      },
+      productos: [],
+      subtotal: parseFloat(document.getElementById('subtotalDisplay').textContent.replace(/[^\d.-]/g, '')) || 0,
+      igv: parseFloat(document.getElementById('igvDisplay').textContent.replace(/[^\d.-]/g, '')) || 0,
+      total: parseFloat(document.getElementById('totalFactura').textContent.replace(/[^\d.-]/g, '')) || 0,
+      totalEnLetras: document.getElementById('totalEnLetras').textContent || '',
+      fecha: new Date().toLocaleDateString('es-PE', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      })
+    };
 
-          filasProductos.forEach(row => {
-            if (row.querySelector('.producto-select').value !== '') {
-              datosFactura.productos.push({
-                nombre: row.querySelector('.producto-select').selectedOptions[0].text,
-                cantidad: row.querySelector('.cantidad-input').value,
-                precio: row.querySelector('.precio-unitario').textContent,
-                subtotal: row.querySelector('.subtotal').textContent
-              });
-            }
-          });
+    filasProductos.forEach(row => {
+      const select = row.querySelector('.producto-select');
+      if (select && select.value !== '') {
+        datosFactura.productos.push({
+          codigo: select.selectedOptions[0].getAttribute('data-codigo') || '',
+          nombre: select.selectedOptions[0].text.replace(/^.*? - /, ''),
+          cantidad: row.querySelector('.cantidad-input').value || '1',
+          precio: parseFloat(row.querySelector('.precio-unitario').textContent.replace(/[^\d.-]/g, '')).toFixed(2),
+          subtotal: parseFloat(row.querySelector('.subtotal').textContent.replace(/[^\d.-]/g, '')).toFixed(2)
+        });
+      }
+    });
 
-          const pdfResponse = await fetch('/facturas/generar-pdf-preview', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(datosFactura)
-          });
+    const pdfResponse = await fetch('/facturas/generar-pdf-preview', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(datosFactura)
+    });
 
-          if (!pdfResponse.ok) throw new Error('Error al generar PDF');
+    if (!pdfResponse.ok) throw new Error('Error al generar PDF');
 
-          const blob = await pdfResponse.blob();
-          const url = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `${datosFactura.tipoDocumento}_${datosFactura.numeroDocumento}.pdf`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
+    const blob = await pdfResponse.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${datosFactura.tipoDocumento}_${datosFactura.numeroDocumento}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
 
-          if (redireccion) {
-            window.location.href = redireccion;
-          } else {
-            alert('Factura guardada y PDF generado con éxito.');
-          }
-        } catch (error) {
-          console.error(error);
-          alert('Error: ' + error.message);
-        }
-      });
+    if (redireccion) {
+      window.location.href = redireccion;
+    } else {
+      alert('Factura guardada y PDF generado con éxito.');
+    }
+
+  } catch (error) {
+    console.error(error);
+    alert('Error: ' + error.message);
+  }
+});
+
     });
   </script>
 </body>
