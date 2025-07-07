@@ -747,12 +747,19 @@ document.getElementById('btnGuardar').addEventListener('click', async function (
     return;
   }
 
-  // === VALIDACIÓN DE STOCK AL GUARDAR ===
+  // === VALIDACIÓN DE STOCK Y CANTIDAD > 0 AL GUARDAR ===
   let stockInvalido = false;
+  let cantidadInvalida = false;
+
   filasProductos.forEach(row => {
     const select = row.querySelector('.producto-select');
     const cantidad = parseInt(row.querySelector('.cantidad-input').value) || 0;
     const stock = parseInt(select.selectedOptions[0]?.dataset.stock || 0);
+
+    if (cantidad <= 0) {
+      cantidadInvalida = true;
+      alert(`La cantidad ingresada para el producto: ${select.selectedOptions[0].text} debe ser mayor a 0.`);
+    }
 
     if (cantidad > stock) {
       stockInvalido = true;
@@ -760,7 +767,7 @@ document.getElementById('btnGuardar').addEventListener('click', async function (
     }
   });
 
-  if (stockInvalido) {
+  if (cantidadInvalida || stockInvalido) {
     return; // Detener guardado
   }
 
