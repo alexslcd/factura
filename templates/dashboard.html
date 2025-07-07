@@ -326,27 +326,74 @@
 
 <!-- ChartJS -->
 <script>
-  const ventasPorDia = {{ ventas_por_dia | tojson }};
-  const productosPorDia = {{ productos_por_dia | tojson }};
-  const ventasPorMes = {{ ventas_por_mes | tojson }};
+  // Función para formatear fechas
+  function formatDate(dateString) {
+    const options = { day: '2-digit', month: '2-digit', year: 'numeric' };
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-ES', options);
+  }
 
+  // Datos de ejemplo (reemplaza con tus datos reales)
+  const ventasPorDia = [
+    { fecha_emision: 'Sun, 01 Jun 2025 00:00:00 GMT', total_dia: 1500 },
+    { fecha_emision: 'Tue, 10 Jun 2025 00:00:00 GMT', total_dia: 2300 },
+    { fecha_emision: 'Wed, 11 Jun 2025 00:00:00 GMT', total_dia: 1800 }
+  ];
+
+  const productosPorDia = [
+    { fecha_emision: 'Sun, 01 Jun 2025 00:00:00 GMT', cantidad: 15 },
+    { fecha_emision: 'Tue, 10 Jun 2025 00:00:00 GMT', cantidad: 23 },
+    { fecha_emision: 'Wed, 11 Jun 2025 00:00:00 GMT', cantidad: 18 }
+  ];
+
+  const ventasPorMes = [
+    { mes: 'Enero 2025', total_mes: 12500 },
+    { mes: 'Febrero 2025', total_mes: 18700 },
+    { mes: 'Marzo 2025', total_mes: 15400 }
+  ];
+
+  // Gráfico de ventas por día
   new Chart(document.getElementById('ventasDiaChart'), {
     type: 'bar',
     data: {
-      labels: ventasPorDia.map(v => v.fecha_emision),
+      labels: ventasPorDia.map(v => formatDate(v.fecha_emision)),
       datasets: [{
         label: 'S/ Ventas',
         data: ventasPorDia.map(v => v.total_dia),
         backgroundColor: '#4e73df'
       }]
     },
-    options: { responsive: true, plugins: { legend: { display: false } } }
+    options: { 
+      responsive: true, 
+      plugins: { 
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: function(context) {
+              return context[0].label;
+            },
+            label: function(context) {
+              return 'S/ ' + context.raw.toFixed(2);
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            maxRotation: 45,
+            minRotation: 45
+          }
+        }
+      }
+    }
   });
 
+  // Gráfico de productos por día
   new Chart(document.getElementById('productosDiaChart'), {
     type: 'line',
     data: {
-      labels: productosPorDia.map(v => v.fecha_emision),
+      labels: productosPorDia.map(v => formatDate(v.fecha_emision)),
       datasets: [{
         label: 'Productos',
         data: productosPorDia.map(v => v.cantidad),
@@ -355,9 +402,24 @@
         fill: true
       }]
     },
-    options: { responsive: true }
+    options: { 
+      responsive: true,
+      plugins: {
+        tooltip: {
+          callbacks: {
+            title: function(context) {
+              return context[0].label;
+            },
+            label: function(context) {
+              return context.raw + ' productos';
+            }
+          }
+        }
+      }
+    }
   });
 
+  // Gráfico de ventas por mes
   new Chart(document.getElementById('ventasMesChart'), {
     type: 'bar',
     data: {
@@ -368,7 +430,21 @@
         backgroundColor: '#1cc88a'
       }]
     },
-    options: { responsive: true }
+    options: { 
+      responsive: true,
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return 'S/ ' + context.raw.toFixed(2);
+            }
+          }
+        }
+      }
+    }
   });
 </script>
 
