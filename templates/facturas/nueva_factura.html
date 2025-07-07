@@ -338,17 +338,19 @@
               <tbody>
                 <tr class="producto-row">
                   <td>
-                   <select name="producto_id" class="form-select form-select-sm producto-select" required>
-                  <option value="" selected disabled>Seleccione producto</option>
-                    {% for producto in productos %}
-                      <option value="{{ producto.id }}" 
-                              data-precio="{{ producto.precio }}" 
-                              data-codigo="{{ producto.codigo_producto }}">
-                        {{ producto.codigo_producto }} - {{ producto.nombre }}
-                      </option>
-                    {% endfor %}
-                  </select>
-
+                    <select class="form-select producto-select" name="producto_id" required>
+                            <option value="">Seleccione producto</option>
+                            {% for p in productos %}
+                            <option 
+                              value="{{ p.id }}"
+                              data-precio="{{ p.precio }}"
+                              data-codigo="{{ p.codigo_producto }}"
+                              data-stock="{{ p.stock }}"
+                            >
+                              {{ p.codigo_producto }} - {{ p.nombre }}
+                            </option>
+                            {% endfor %}
+                          </select>
                   </td>
                   <td><input type="number" name="cantidad" class="form-control form-control-sm cantidad-input text-end" min="1" value="1" required /></td>
                   <td class="precio-unitario text-end">S/ 0.00</td>
@@ -736,6 +738,23 @@ document.getElementById('btnGuardar').addEventListener('click', async function (
     return;
   }
 
+  // === VALIDACIÓN DE STOCK AL GUARDAR ===
+  let stockInvalido = false;
+  filasProductos.forEach(row => {
+    const select = row.querySelector('.producto-select');
+    const cantidad = parseInt(row.querySelector('.cantidad-input').value) || 0;
+    const stock = parseInt(select.selectedOptions[0]?.dataset.stock || 0);
+
+    if (cantidad > stock) {
+      stockInvalido = true;
+      alert(`Stock insuficiente para el producto: ${select.selectedOptions[0].text}. Stock disponible: ${stock}`);
+    }
+  });
+
+  if (stockInvalido) {
+    return; // Detener guardado
+  }
+
   try {
     const formData = new FormData(form);
 
@@ -747,7 +766,7 @@ document.getElementById('btnGuardar').addEventListener('click', async function (
     const redireccion = response.redirected ? response.url : null;
     if (!response.ok && !redireccion) throw new Error('Error al guardar la factura');
 
-    // Preparar datos del PDF
+    // === Preparar datos para PDF ===
     const datosFactura = {
       tipoDocumento: document.getElementById('tipoDocumento').value || '',
       numeroDocumento: document.getElementById('numeroDocumento').value || '',
@@ -812,7 +831,6 @@ document.getElementById('btnGuardar').addEventListener('click', async function (
     alert('Error: ' + error.message);
   }
 });
-
     });
   </script>
 </body>
